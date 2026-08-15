@@ -330,7 +330,8 @@ const CONFIG = {
     + "?return_url=" + encodeURIComponent(location.origin + location.pathname + "?view=resumen&tipo=proceso"),
 
   // Endpoint liviano (n8n) que devuelve el JSON ya traducido
-  // (códigos -> nombres reales) de una sumisión por su id.
+  // (códigos -> nombres reales) de la ÚLTIMA sumisión de un tipo dado.
+  // Se llama como: dataEndpoint + "?tipo=recepcion" o "?tipo=proceso"
   // Ejemplo esperado de respuesta, ver parseSummary() más abajo.
   dataEndpoint: "https://REEMPLAZAR-n8n.tu-dominio.com/webhook/resumen",
 
@@ -506,10 +507,10 @@ function escapeHtml(s) {
   return String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 }
 
-async function loadSummary(tipo, id) {
+async function loadSummary(tipo) {
   renderState("Cargando el resumen…", "", tipo);
   try {
-    const url = CONFIG.dataEndpoint + "?tipo=" + encodeURIComponent(tipo) + "&id=" + encodeURIComponent(id || "");
+    const url = CONFIG.dataEndpoint + "?tipo=" + encodeURIComponent(tipo);
     const resp = await fetch(url, { cache: "no-store" });
     if (!resp.ok) throw new Error("HTTP " + resp.status);
     const data = await resp.json();
@@ -564,8 +565,9 @@ function init() {
   const view = params.get("view");
   if (view === "resumen") {
     const tipo = params.get("tipo") === "recepcion" ? "recepcion" : "proceso";
-    const id = params.get("id") || params.get("instanceID") || params.get("submission") || "";
-    loadSummary(tipo, id);
+    // Kobo no agrega un id al volver por return_url — pedimos la última
+    // sumisión de este tipo, que en la práctica es la que se acaba de enviar.
+    loadSummary(tipo);
   } else {
     showHome();
   }
